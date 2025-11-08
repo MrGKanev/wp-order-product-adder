@@ -195,8 +195,6 @@ function opa_add_product_to_orders()
       $item = new WC_Order_Item_Product();
       $item->set_product($product);
       $item->set_quantity($quantity);
-      $item->set_subtotal($product->get_price() * $quantity);
-      $item->set_total($product->get_price() * $quantity);
 
       // Add item to order
       $order->add_item($item);
