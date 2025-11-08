@@ -13,9 +13,17 @@ Order Product Adder provides a simple interface to add products to one or multip
 
 ## Requirements
 
-- WordPress 5.0 or higher
-- WooCommerce 3.0 or higher
-- PHP 7.2 or higher
+- WordPress 6.0 or higher
+- WooCommerce 7.0 or higher (tested up to 9.5)
+- PHP 7.4 or higher (8.0+ recommended)
+
+## Features
+
+- Modern WooCommerce compatibility (supports HPOS - High Performance Order Storage)
+- Bulk product addition to multiple orders
+- Real-time AJAX logging
+- Secure with capability checks and nonce verification
+- Translation ready
 
 ## Usage
 
