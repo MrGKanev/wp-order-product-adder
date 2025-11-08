@@ -1,10 +1,5 @@
 # Order Product Adder
 
-## Description
-
-Order Product Adder provides a simple interface to add products to one or multiple WooCommerce orders simultaneously. It maintains a detailed log of all operations and updates in real-time using AJAX.
-
-
 ## Installation
 
 1. Upload `order-product-adder` folder to `/wp-content/plugins/` directory
