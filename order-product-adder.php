@@ -3,14 +3,46 @@
 /**
  * Plugin Name: Order Product Adder
  * Description: Add products to existing orders with logging functionality
- * Version: 1.0
- * Author: Your Name
+ * Version: 1.1.0
+ * Author: Gabriel Kanev
+ * Author URI: https://gkanev.com
+ * Requires at least: 6.0
+ * Requires PHP: 7.4
+ * WC requires at least: 7.0
+ * WC tested up to: 9.5
+ * Text Domain: order-product-adder
+ * Domain Path: /languages
+ * License: GPL v2 or later
+ * License URI: https://www.gnu.org/licenses/gpl-2.0.html
  */
 
 // Prevent direct access
 if (!defined('ABSPATH')) {
   exit;
 }
+
+// Check if WooCommerce is active
+add_action('plugins_loaded', 'opa_check_woocommerce');
+function opa_check_woocommerce()
+{
+  if (!class_exists('WooCommerce')) {
+    add_action('admin_notices', 'opa_woocommerce_missing_notice');
+    deactivate_plugins(plugin_basename(__FILE__));
+  }
+}
+
+// Admin notice if WooCommerce is not active
+function opa_woocommerce_missing_notice()
+{
+  echo '<div class="error"><p>' . esc_html__('Order Product Adder requires WooCommerce to be installed and active.', 'order-product-adder') . '</p></div>';
+}
+
+// Declare HPOS compatibility
+add_action('before_woocommerce_init', function () {
+  if (class_exists(\Automattic\WooCommerce\Utilities\FeaturesUtil::class)) {
+    \Automattic\WooCommerce\Utilities\FeaturesUtil::declare_compatibility('custom_order_tables', __FILE__, true);
+  }
+});
 
 // Create database table on plugin activation
 register_activation_hook(__FILE__, 'opa_create_logs_table');
@@ -114,13 +146,31 @@ function opa_add_product_to_orders()
 {
   check_ajax_referer('opa-ajax-nonce', 'nonce');
 
-  $order_ids = explode(',', $_POST['order_ids']);
-  $product_sku = sanitize_text_field($_POST['product_sku']);
-  $quantity = intval($_POST['quantity']);
+  // Check user capabilities
+  if (!current_user_can('manage_woocommerce')) {
+    wp_send_json_error(array('message' => __('Insufficient permissions', 'order-product-adder')));
+    return;
+  }
+
+  // Validate and sanitize inputs
+  if (empty($_POST['order_ids']) || empty($_POST['product_sku']) || empty($_POST['quantity'])) {
+    wp_send_json_error(array('message' => __('Missing required fields', 'order-product-adder')));
+    return;
+  }
+
+  $order_ids = array_filter(array_map('absint', explode(',', wp_unslash($_POST['order_ids']))));
+  $product_sku = sanitize_text_field(wp_unslash($_POST['product_sku']));
+  $quantity = absint($_POST['quantity']);
+
+  // Validate quantity
+  if ($quantity < 1) {
+    wp_send_json_error(array('message' => __('Quantity must be at least 1', 'order-product-adder')));
+    return;
+  }
 
   $product_id = wc_get_product_id_by_sku($product_sku);
   if (!$product_id) {
-    wp_send_json_error(array('message' => 'Product not found'));
+    wp_send_json_error(array('message' => __('Product not found', 'order-product-adder')));
     return;
   }
 
@@ -136,7 +186,18 @@ function opa_add_product_to_orders()
 
     try {
       $product = wc_get_product($product_id);
-      $order->add_product($product, $quantity);
+
+      if (!$product) {
+        throw new Exception('Product could not be loaded');
+      }
+
+      // Use modern WooCommerce method to add product
+      $item = new WC_Order_Item_Product();
+      $item->set_product($product);
+      $item->set_quantity($quantity);
+
+      // Add item to order
+      $order->add_item($item);
       $order->calculate_totals();
       $order->save();
 
@@ -184,14 +245,22 @@ function opa_get_logs()
 {
   check_ajax_referer('opa-ajax-nonce', 'nonce');
 
+  // Check user capabilities
+  if (!current_user_can('manage_woocommerce')) {
+    wp_send_json_error(array('message' => __('Insufficient permissions', 'order-product-adder')));
+    return;
+  }
+
   global $wpdb;
   $table_name = $wpdb->prefix . 'opa_logs';
 
-  $logs = $wpdb->get_results("
-        SELECT * FROM $table_name 
-        ORDER BY created_at DESC 
-        LIMIT 50
-    ");
+  // Use prepared statement for security
+  $logs = $wpdb->get_results(
+    $wpdb->prepare(
+      "SELECT * FROM {$table_name} ORDER BY created_at DESC LIMIT %d",
+      50
+    )
+  );
 
   wp_send_json_success(array('logs' => $logs));
 }
