@@ -158,7 +158,7 @@ function opa_add_product_to_orders()
     return;
   }
 
-  $order_ids = array_map('trim', explode(',', sanitize_text_field(wp_unslash($_POST['order_ids']))));
+  $order_ids = array_filter(array_map('absint', explode(',', wp_unslash($_POST['order_ids']))));
   $product_sku = sanitize_text_field(wp_unslash($_POST['product_sku']));
   $quantity = absint($_POST['quantity']);
 
