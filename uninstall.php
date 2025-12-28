@@ -31,7 +31,7 @@ if (is_multisite()) {
 
     // Drop table for this blog
     $table_name = $wpdb->prefix . 'opa_logs';
-    $wpdb->query("DROP TABLE IF EXISTS {$table_name}");
+    $wpdb->query('DROP TABLE IF EXISTS ' . esc_sql($table_name));
 
     // Clean up options for this blog
     // delete_option('opa_option_name');
