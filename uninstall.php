@@ -23,8 +23,8 @@ $wpdb->query("DROP TABLE IF EXISTS {$table_name}");
 
 // For multisite installations
 if (is_multisite()) {
-  // Get all blog IDs
-  $blog_ids = $wpdb->get_col("SELECT blog_id FROM $wpdb->blogs");
+  // Get all blog IDs using the recommended multisite API
+  $blog_ids = get_sites(array('fields' => 'ids'));
 
   foreach ($blog_ids as $blog_id) {
     switch_to_blog($blog_id);
