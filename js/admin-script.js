@@ -1,5 +1,19 @@
+/**
+ * Order Product Adder Admin JavaScript
+ *
+ * Handles AJAX operations for adding products to orders and displaying logs.
+ *
+ * @package OrderProductAdder
+ * @since 1.0.0
+ */
 jQuery(document).ready(function ($) {
-  // Function to load logs
+  /**
+   * Load logs from the server via AJAX.
+   *
+   * Fetches the most recent logs and displays them in the log container.
+   *
+   * @since 1.0.0
+   */
   function loadLogs() {
     $.ajax({
       url: opaAjax.ajaxurl,
@@ -16,7 +30,13 @@ jQuery(document).ready(function ($) {
     });
   }
 
-  // Function to escape HTML to prevent XSS
+  /**
+   * Escape HTML special characters to prevent XSS attacks.
+   *
+   * @since 1.2.0
+   * @param {string} text - The text to escape.
+   * @return {string} The escaped text.
+   */
   function escapeHtml(text) {
     var map = {
       "&": "&amp;",
@@ -30,7 +50,14 @@ jQuery(document).ready(function ($) {
     });
   }
 
-  // Function to display logs
+  /**
+   * Display logs in the log container.
+   *
+   * Creates properly escaped log entries and appends them to the container.
+   *
+   * @since 1.0.0
+   * @param {Array} logs - Array of log objects from the server.
+   */
   function displayLogs(logs) {
     var container = $("#opa-log-container");
     container.empty();
@@ -41,6 +68,7 @@ jQuery(document).ready(function ($) {
         .addClass("log-entry")
         .addClass(logClass);
 
+      // Build log entry elements with proper escaping
       var orderInfo = $("<strong>").text("Order #" + log.order_id);
       var message = document.createTextNode(" - " + log.message);
 
@@ -61,10 +89,16 @@ jQuery(document).ready(function ($) {
     });
   }
 
-  // Load logs on page load
+  // Load logs when page is ready
   loadLogs();
 
-  // Handle form submission
+  /**
+   * Handle form submission for adding products to orders.
+   *
+   * Submits the form data via AJAX and handles the response.
+   *
+   * @since 1.0.0
+   */
   $("#opa-add-product-form").on("submit", function (e) {
     e.preventDefault();
 
@@ -85,9 +119,8 @@ jQuery(document).ready(function ($) {
       },
       success: function (response) {
         if (response.success) {
-          // Clear form
+          // Reset form and reload logs on success
           form[0].reset();
-          // Reload logs
           loadLogs();
         } else {
           alert("Error: " + response.data.message);
@@ -97,11 +130,16 @@ jQuery(document).ready(function ($) {
         alert("An error occurred while processing your request.");
       },
       complete: function () {
+        // Re-enable button after request completes
         submitButton.prop("disabled", false).text("Add Products");
       },
     });
   });
 
-  // Auto-refresh logs every 30 seconds
+  /**
+   * Auto-refresh logs every 30 seconds.
+   *
+   * @since 1.0.0
+   */
   setInterval(loadLogs, 30000);
 });
