@@ -152,7 +152,7 @@ function opa_admin_page()
       <div class="opa-logs">
         <h2><?php echo esc_html__('Logs', 'order-product-adder'); ?></h2>
         <div id="opa-log-container">
-          <!-- <?php echo esc_html__('Logs will be loaded here via AJAX', 'order-product-adder'); ?> -->
+          <!-- Logs will be loaded here via AJAX -->
         </div>
       </div>
     </div>
