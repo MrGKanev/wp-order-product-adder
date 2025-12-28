@@ -109,7 +109,7 @@ function opa_create_logs_table()
   dbDelta($sql);
 
   // Verify table creation and log errors
-  if ($wpdb->get_var("SHOW TABLES LIKE '$table_name'") != $table_name) {
+  if ($wpdb->get_var($wpdb->prepare('SHOW TABLES LIKE %s', $table_name)) != $table_name) {
     error_log('Order Product Adder: Failed to create database table ' . $table_name);
   }
 }
