@@ -16,23 +16,48 @@ jQuery(document).ready(function ($) {
     });
   }
 
+  // Function to escape HTML to prevent XSS
+  function escapeHtml(text) {
+    var map = {
+      "&": "&amp;",
+      "<": "&lt;",
+      ">": "&gt;",
+      '"': "&quot;",
+      "'": "&#039;",
+    };
+    return String(text).replace(/[&<>"']/g, function (m) {
+      return map[m];
+    });
+  }
+
   // Function to display logs
   function displayLogs(logs) {
     var container = $("#opa-log-container");
     container.empty();
 
     logs.forEach(function (log) {
-      var logClass = "log-" + log.status;
-      var html = `
-                <div class="log-entry ${logClass}">
-                    <strong>Order #${log.order_id}</strong> - ${log.message}
-                    <div class="log-meta">
-                        SKU: ${log.product_sku} | Quantity: ${log.quantity} | 
-                        ${new Date(log.created_at).toLocaleString()}
-                    </div>
-                </div>
-            `;
-      container.append(html);
+      var logClass = "log-" + escapeHtml(log.status);
+      var logEntry = $("<div>")
+        .addClass("log-entry")
+        .addClass(logClass);
+
+      var orderInfo = $("<strong>").text("Order #" + log.order_id);
+      var message = document.createTextNode(" - " + log.message);
+
+      var metaDiv = $("<div>").addClass("log-meta");
+      var metaText =
+        "SKU: " +
+        log.product_sku +
+        " | Quantity: " +
+        log.quantity +
+        " | " +
+        new Date(log.created_at).toLocaleString();
+      metaDiv.text(metaText);
+
+      logEntry.append(orderInfo);
+      logEntry.append(message);
+      logEntry.append(metaDiv);
+      container.append(logEntry);
     });
   }
 

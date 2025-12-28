@@ -3,10 +3,11 @@
 /**
  * Plugin Name: Order Product Adder
  * Description: Add products to existing orders with logging functionality
- * Version: 1.1.0
+ * Version: 1.2.0
  * Author: Gabriel Kanev
  * Author URI: https://gkanev.com
  * Requires at least: 6.0
+ * Tested up to: 6.9
  * Requires PHP: 7.4
  * WC requires at least: 7.0
  * WC tested up to: 9.5
@@ -21,8 +22,20 @@ if (!defined('ABSPATH')) {
   exit;
 }
 
+// Define plugin constants
+define('OPA_VERSION', '1.2.0');
+define('OPA_PLUGIN_DIR', plugin_dir_path(__FILE__));
+define('OPA_PLUGIN_URL', plugin_dir_url(__FILE__));
+
+// Load plugin text domain for translations
+add_action('plugins_loaded', 'opa_load_textdomain');
+function opa_load_textdomain()
+{
+  load_plugin_textdomain('order-product-adder', false, dirname(plugin_basename(__FILE__)) . '/languages');
+}
+
 // Check if WooCommerce is active
-add_action('plugins_loaded', 'opa_check_woocommerce');
+add_action('plugins_loaded', 'opa_check_woocommerce', 20);
 function opa_check_woocommerce()
 {
   if (!class_exists('WooCommerce')) {
@@ -54,18 +67,25 @@ function opa_create_logs_table()
   $charset_collate = $wpdb->get_charset_collate();
 
   $sql = "CREATE TABLE IF NOT EXISTS $table_name (
-        id bigint(20) NOT NULL AUTO_INCREMENT,
-        order_id bigint(20) NOT NULL,
-        product_sku varchar(100) NOT NULL,
-        quantity int(11) NOT NULL,
-        status varchar(50) NOT NULL,
-        message text NOT NULL,
-        created_at datetime DEFAULT CURRENT_TIMESTAMP,
-        PRIMARY KEY  (id)
+        id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+        order_id BIGINT UNSIGNED NOT NULL,
+        product_sku VARCHAR(100) NOT NULL,
+        quantity INT UNSIGNED NOT NULL,
+        status VARCHAR(50) NOT NULL,
+        message TEXT NOT NULL,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY  (id),
+        KEY order_id (order_id),
+        KEY created_at (created_at)
     ) $charset_collate;";
 
   require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
   dbDelta($sql);
+
+  // Check if table was created successfully
+  if ($wpdb->get_var("SHOW TABLES LIKE '$table_name'") != $table_name) {
+    error_log('Order Product Adder: Failed to create database table ' . $table_name);
+  }
 }
 
 // Add menu item
@@ -73,8 +93,8 @@ add_action('admin_menu', 'opa_add_admin_menu');
 function opa_add_admin_menu()
 {
   add_menu_page(
-    'Order Product Adder',
-    'Order Product Adder',
+    __('Order Product Adder', 'order-product-adder'),
+    __('Order Product Adder', 'order-product-adder'),
     'manage_woocommerce',
     'order-product-adder',
     'opa_admin_page',
@@ -91,8 +111,8 @@ function opa_enqueue_scripts($hook)
     return;
   }
 
-  wp_enqueue_style('opa-admin-style', plugins_url('css/admin-style.css', __FILE__));
-  wp_enqueue_script('opa-admin-script', plugins_url('js/admin-script.js', __FILE__), array('jquery'), null, true);
+  wp_enqueue_style('opa-admin-style', OPA_PLUGIN_URL . 'css/admin-style.css', array(), OPA_VERSION);
+  wp_enqueue_script('opa-admin-script', OPA_PLUGIN_URL . 'js/admin-script.js', array('jquery'), OPA_VERSION, true);
   wp_localize_script('opa-admin-script', 'opaAjax', array(
     'ajaxurl' => admin_url('admin-ajax.php'),
     'nonce' => wp_create_nonce('opa-ajax-nonce')
@@ -104,35 +124,35 @@ function opa_admin_page()
 {
 ?>
   <div class="wrap">
-    <h1>Order Product Adder</h1>
+    <h1><?php echo esc_html__('Order Product Adder', 'order-product-adder'); ?></h1>
 
     <div class="opa-container">
       <div class="opa-form">
-        <h2>Add Products to Order</h2>
+        <h2><?php echo esc_html__('Add Products to Order', 'order-product-adder'); ?></h2>
         <form id="opa-add-product-form">
           <div class="form-group">
-            <label for="order_ids">Order IDs (comma-separated):</label>
+            <label for="order_ids"><?php echo esc_html__('Order IDs (comma-separated):', 'order-product-adder'); ?></label>
             <input type="text" id="order_ids" name="order_ids" required>
           </div>
 
           <div class="form-group">
-            <label for="product_sku">Product SKU:</label>
+            <label for="product_sku"><?php echo esc_html__('Product SKU:', 'order-product-adder'); ?></label>
             <input type="text" id="product_sku" name="product_sku" required>
           </div>
 
           <div class="form-group">
-            <label for="quantity">Quantity:</label>
+            <label for="quantity"><?php echo esc_html__('Quantity:', 'order-product-adder'); ?></label>
             <input type="number" id="quantity" name="quantity" min="1" value="1" required>
           </div>
 
-          <button type="submit" class="button button-primary">Add Products</button>
+          <button type="submit" class="button button-primary"><?php echo esc_html__('Add Products', 'order-product-adder'); ?></button>
         </form>
       </div>
 
       <div class="opa-logs">
-        <h2>Logs</h2>
+        <h2><?php echo esc_html__('Logs', 'order-product-adder'); ?></h2>
         <div id="opa-log-container">
-          <!-- Logs will be loaded here via AJAX -->
+          <!-- <?php echo esc_html__('Logs will be loaded here via AJAX', 'order-product-adder'); ?> -->
         </div>
       </div>
     </div>
@@ -180,7 +200,7 @@ function opa_add_product_to_orders()
     $order = wc_get_order($order_id);
 
     if (!$order) {
-      opa_log($order_id, $product_sku, $quantity, 'error', 'Order not found');
+      opa_log($order_id, $product_sku, $quantity, 'error', __('Order not found', 'order-product-adder'));
       continue;
     }
 
@@ -188,7 +208,7 @@ function opa_add_product_to_orders()
       $product = wc_get_product($product_id);
 
       if (!$product) {
-        throw new Exception('Product could not be loaded');
+        throw new Exception(__('Product could not be loaded', 'order-product-adder'));
       }
 
       // Use modern WooCommerce method to add product
@@ -201,11 +221,11 @@ function opa_add_product_to_orders()
       $order->calculate_totals();
       $order->save();
 
-      opa_log($order_id, $product_sku, $quantity, 'success', 'Product added successfully');
+      opa_log($order_id, $product_sku, $quantity, 'success', __('Product added successfully', 'order-product-adder'));
       $results[] = array(
         'order_id' => $order_id,
         'status' => 'success',
-        'message' => 'Product added successfully'
+        'message' => __('Product added successfully', 'order-product-adder')
       );
     } catch (Exception $e) {
       opa_log($order_id, $product_sku, $quantity, 'error', $e->getMessage());
@@ -226,7 +246,7 @@ function opa_log($order_id, $product_sku, $quantity, $status, $message)
   global $wpdb;
   $table_name = $wpdb->prefix . 'opa_logs';
 
-  $wpdb->insert(
+  $result = $wpdb->insert(
     $table_name,
     array(
       'order_id' => $order_id,
@@ -237,6 +257,13 @@ function opa_log($order_id, $product_sku, $quantity, $status, $message)
     ),
     array('%d', '%s', '%d', '%s', '%s')
   );
+
+  // Log database errors
+  if ($result === false) {
+    error_log('Order Product Adder: Database insert failed - ' . $wpdb->last_error);
+  }
+
+  return $result;
 }
 
 // AJAX handler for fetching logs
@@ -261,6 +288,13 @@ function opa_get_logs()
       50
     )
   );
+
+  // Check for database errors
+  if ($logs === null) {
+    error_log('Order Product Adder: Database query failed - ' . $wpdb->last_error);
+    wp_send_json_error(array('message' => __('Failed to retrieve logs', 'order-product-adder')));
+    return;
+  }
 
   wp_send_json_success(array('logs' => $logs));
 }
